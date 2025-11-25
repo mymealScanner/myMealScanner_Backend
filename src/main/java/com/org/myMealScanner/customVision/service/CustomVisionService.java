@@ -1,5 +1,6 @@
 package com.org.myMealScanner.customVision.service;
 
+import com.org.myMealScanner.customVision.dto.CustomVisionResultResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -25,7 +26,7 @@ public class CustomVisionService {
     @Value("${azure.customvision.iteration-name}")
     private String iterationName;
 
-    public Map<String, Object> classifyImage(byte[] imageBytes) throws Exception {
+    public CustomVisionResultResponse classifyImage(byte[] imageBytes, String when) throws Exception {
 
         // REST API URL 구성
         String url = String.format(
@@ -66,7 +67,11 @@ public class CustomVisionService {
                 .max(Comparator.comparingDouble(m -> (Double) m.get("probability")))
                 .orElseThrow(() -> new RuntimeException("Prediction list is empty"));
 
-        return bestPrediction;
+        return CustomVisionResultResponse.builder()
+                .when(when)
+                .foodName(bestPrediction.get("tagName").toString())
+                .prediction(bestPrediction.get("probability"))
+                .build();
 
 
     }
