@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,6 +19,7 @@ public class ChatService {
     private String deploymentName;
 
     private final OpenAIClient openAIClient;
+
     private final ObjectMapper objectMapper;
 
     public ChatService(@Value("${azure.openai.api-key}") String apiKey,
