@@ -23,11 +23,13 @@ public class EdamamController {
     public MacroNutrientsDto analyzeAnalysis(@PathVariable String foodName) {
         return edamamService.getMacroNutrition(foodName);
     }
+
     @PostMapping("/nutrition/analyze-recipe")
     public EdamamResponseDto analyzeRecipeNutrition(
             @RequestBody EdamamRecipeRequestDto requestDto) {
         return edamamRecipeService.analyzeRecipeNutrition(requestDto);
     }
+
     @PostMapping("/nutrition/summary-recipe")
     public MacroNutrientsDto analyzeRecipeSummary(
             @RequestBody EdamamRecipeRequestDto requestDto) {

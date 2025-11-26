@@ -14,6 +14,7 @@ public class EdamamService {
 
     @Value("${edamam.app-id}")
     private String appId;
+
     @Value("${edamam.app-key}")
     private String appKey;
 
@@ -27,7 +28,7 @@ public class EdamamService {
 
 
     public EdamamResponseDto getNutritionInfo(String foodName) {
-        String query = "100g "+  foodName;
+        String query = "100g " +foodName;
 
         try {
             return webClient.get()

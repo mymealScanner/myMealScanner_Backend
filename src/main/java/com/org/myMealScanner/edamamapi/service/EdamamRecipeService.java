@@ -14,11 +14,11 @@ public class EdamamRecipeService {
 
     @Value("${edamam.app-id}")
     private String appId;
+
     @Value("${edamam.app-key}")
     private String appKey;
 
     private final WebClient webClient;
-
 
     public EdamamRecipeService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder
@@ -62,7 +62,6 @@ public class EdamamRecipeService {
         return macroDto;
     }
 
-
     public Map<String, Double> extractMacroNutrients(EdamamResponseDto responseDto) {
         if (responseDto == null || responseDto.getIngredients() == null || responseDto.getIngredients().isEmpty()) {
             return new HashMap<>();
@@ -98,7 +97,6 @@ public class EdamamRecipeService {
             double newCarb = nutrientsMap.getOrDefault("CHOCDF", new EdamamResponseDto.NutrientDto()).getQuantity();
             totalNutrients.put("carbohydrate", currentCarb + newCarb);
         }
-
         return totalNutrients;
     }
 }
