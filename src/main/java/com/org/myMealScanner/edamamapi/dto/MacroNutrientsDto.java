@@ -7,4 +7,5 @@ public class MacroNutrientsDto {
     private double calorie;
     private double protein;
     private double carbohydrate;
+    private double fat;
 }

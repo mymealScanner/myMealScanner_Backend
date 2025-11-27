@@ -55,9 +55,10 @@ public class EdamamRecipeService {
         Map<String, Double> nutrientMap = extractMacroNutrients(responseDto);
 
         MacroNutrientsDto macroDto = new MacroNutrientsDto();
-        macroDto.setCalorie(nutrientMap.getOrDefault("calorie", 0.0));
-        macroDto.setProtein(nutrientMap.getOrDefault("protein", 0.0));
-        macroDto.setCarbohydrate(nutrientMap.getOrDefault("carbohydrate", 0.0));
+        macroDto.setCalorie(nutrientMap.getOrDefault("칼로리(kcal)", 0.0));
+        macroDto.setProtein(nutrientMap.getOrDefault("단백질(g)", 0.0));
+        macroDto.setCarbohydrate(nutrientMap.getOrDefault("탄수화물(g)", 0.0));
+        macroDto.setFat(nutrientMap.getOrDefault("지방(g)", 0.0)); // 💡 지방(Fat) 추가
 
         return macroDto;
     }
@@ -69,9 +70,10 @@ public class EdamamRecipeService {
 
         Map<String, Double> totalNutrients = new HashMap<>();
 
-        totalNutrients.put("calorie", 0.0);
-        totalNutrients.put("protein", 0.0);
-        totalNutrients.put("carbohydrate", 0.0);
+        totalNutrients.put("칼로리(kcal)", 0.0);
+        totalNutrients.put("단백질(g)", 0.0);
+        totalNutrients.put("탄수화물(g)", 0.0);
+        totalNutrients.put("지방(g)", 0.0);
 
         for (EdamamResponseDto.IngredientWrapperDto ingredientWrapper : responseDto.getIngredients()) {
 
@@ -85,17 +87,21 @@ public class EdamamRecipeService {
                 continue;
             }
 
-            double currentCalorie = totalNutrients.get("calorie");
+            double currentCalorie = totalNutrients.get("칼로리(kcal)");
             double newCalorie = nutrientsMap.getOrDefault("ENERC_KCAL", new EdamamResponseDto.NutrientDto()).getQuantity();
-            totalNutrients.put("calorie", currentCalorie + newCalorie);
+            totalNutrients.put("칼로리(kcal)", currentCalorie + newCalorie);
 
-            double currentProtein = totalNutrients.get("protein");
+            double currentProtein = totalNutrients.get("단백질(g)");
             double newProtein = nutrientsMap.getOrDefault("PROCNT", new EdamamResponseDto.NutrientDto()).getQuantity();
-            totalNutrients.put("protein", currentProtein + newProtein);
+            totalNutrients.put("단백질(g)", currentProtein + newProtein);
 
-            double currentCarb = totalNutrients.get("carbohydrate");
+            double currentCarb = totalNutrients.get("탄수화물(g)");
             double newCarb = nutrientsMap.getOrDefault("CHOCDF", new EdamamResponseDto.NutrientDto()).getQuantity();
-            totalNutrients.put("carbohydrate", currentCarb + newCarb);
+            totalNutrients.put("탄수화물(g)", currentCarb + newCarb);
+
+            double currentFat = totalNutrients.get("지방(g)");
+            double newFat = nutrientsMap.getOrDefault("FAT", new EdamamResponseDto.NutrientDto()).getQuantity();
+            totalNutrients.put("지방(g)", currentFat + newFat);
         }
         return totalNutrients;
     }
