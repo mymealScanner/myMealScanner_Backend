@@ -55,15 +55,42 @@ public class ChatService {
         ChatCompletions chatCompletions = openAIClient.getChatCompletions(deploymentName, chatCompletionsOptions);
 
         if (chatCompletions.getChoices() != null && !chatCompletions.getChoices().isEmpty()) {
-            String jsonString = chatCompletions.getChoices().get(0).getMessage().getContent();
+            String rawJsonString = chatCompletions.getChoices().get(0).getMessage().getContent();
+
+            String cleanJsonString = cleanGptResponse(rawJsonString);
 
             try {
-                return objectMapper.readValue(jsonString, RecipeResponseDto.class);
+                return objectMapper.readValue(cleanJsonString, RecipeResponseDto.class);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("GPT 응답 JSON 파싱 실패. 응답 내용: " + jsonString, e);
+                throw new RuntimeException("GPT 응답 JSON 파싱 실패. 응답 내용: " + rawJsonString, e);
             }
         }
 
         throw new RuntimeException("GPT 응답에서 레시피를 찾을 수 없습니다.");
+    }
+
+    private String cleanGptResponse(String gptResponse) {
+        if (gptResponse == null) return null;
+
+        String cleaned = gptResponse.trim();
+
+        if (cleaned.startsWith("```")) {
+            int start = cleaned.indexOf('\n');
+            if (start != -1) {
+                cleaned = cleaned.substring(start + 1).trim();
+            } else {
+                if (cleaned.toLowerCase().startsWith("```json")) {
+                    cleaned = cleaned.substring(7).trim();
+                } else {
+                    cleaned = cleaned.substring(3).trim();
+                }
+            }
+        }
+
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.lastIndexOf("```")).trim();
+        }
+
+        return cleaned;
     }
 }
