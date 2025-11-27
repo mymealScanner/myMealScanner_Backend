@@ -81,11 +81,14 @@ public class EdamamService {
 
         Map<String, Double> nutrients = new HashMap<>();
 
-        nutrients.put("calorie", nutrientsMap.getOrDefault("ENERC_KCAL", new EdamamResponseDto.NutrientDto()).getQuantity());
+        nutrients.put("칼로리(kcal)", nutrientsMap.getOrDefault("ENERC_KCAL", new EdamamResponseDto.NutrientDto()).getQuantity());
 
-        nutrients.put("protein", nutrientsMap.getOrDefault("PROCNT", new EdamamResponseDto.NutrientDto()).getQuantity());
+        nutrients.put("단백질(g)", nutrientsMap.getOrDefault("PROCNT", new EdamamResponseDto.NutrientDto()).getQuantity());
 
-        nutrients.put("carbohydrate", nutrientsMap.getOrDefault("CHOCDF", new EdamamResponseDto.NutrientDto()).getQuantity());
+        nutrients.put("탄수화물(g)", nutrientsMap.getOrDefault("CHOCDF", new EdamamResponseDto.NutrientDto()).getQuantity());
+
+        nutrients.put("지방(g)", nutrientsMap.getOrDefault("FAT", new EdamamResponseDto.NutrientDto()).getQuantity());
+
 
         return nutrients;
     }
@@ -95,9 +98,11 @@ public class EdamamService {
         Map<String, Double> nutrientMap = extractMacroNutrients(responseDto);
 
         MacroNutrientsDto macroDto = new MacroNutrientsDto();
-        macroDto.setCalorie(nutrientMap.getOrDefault("calorie", 0.0));
-        macroDto.setProtein(nutrientMap.getOrDefault("protein", 0.0));
-        macroDto.setCarbohydrate(nutrientMap.getOrDefault("carbohydrate", 0.0));
+
+        macroDto.setCalorie(nutrientMap.getOrDefault("칼로리(kcal)", 0.0));
+        macroDto.setProtein(nutrientMap.getOrDefault("단백질(g)", 0.0));
+        macroDto.setCarbohydrate(nutrientMap.getOrDefault("탄수화물(g)", 0.0));
+        macroDto.setFat(nutrientMap.getOrDefault("지방(g)", 0.0));
 
         return macroDto;
     }
