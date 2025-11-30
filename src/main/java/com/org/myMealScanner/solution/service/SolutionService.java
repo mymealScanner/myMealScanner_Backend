@@ -34,6 +34,7 @@ public class SolutionService {
         그 식사의 영양 분포 및 칼로리는 어느 정도였는지 분석해줘.
         그리고 추천 운동을 개인 맞춤형으로 건강관리 루틴 형태로 제공해줘.
         각 식사별 분석 및 추천 내용은 12줄 이내로 요약해서 답변해줘.
+        아침,점심,저녁에 대한 정보 줄 때 엔터 쳐줘 그리고 *은 무조건 빼 줘.
         """;
 
     public NutritionSolutionResponse getAdvice(NutritionRequestDto request) throws Exception {
