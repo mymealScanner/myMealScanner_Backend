@@ -15,9 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class SolutionController {
     private final SolutionService solutionService;
 
-    @PostMapping("")
+    @PostMapping("/general")
     public NutritionSolutionResponse getAdvice(@RequestBody NutritionRequestDto request) throws Exception {
         return solutionService.getAdvice(request);
+    }
+
+    @PostMapping("")
+    public NutritionSolutionResponse getAdviceWithRag(@RequestBody NutritionRequestDto request) throws Exception {
+        return solutionService.getAdviceWithRag(request);
     }
 
 }

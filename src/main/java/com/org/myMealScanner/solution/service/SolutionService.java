@@ -27,14 +27,28 @@ public class SolutionService {
     @Value("${azure.oai.api-version}")
     private String apiVersion;
 
+    // RAG 용도
+    @Value("${azure.search.endpoint}")
+    private String searchEndpoint;
+
+    @Value("${azure.search.key}")
+    private String searchKey;
+
+    @Value("${azure.search.index}")
+    private String searchIndex;
+
     private static final String SYSTEM_MESSAGE = """
-        너는 헬스/식품 등에 대해 전문가야.
-        내가 준 영양정보를 기반으로 각 식사별로 건강관리하기 위해
-        그 다음 해당 식사는 어떻게 먹어야 하는지,
-        그 식사의 영양 분포 및 칼로리는 어느 정도였는지 분석해줘.
-        그리고 추천 운동을 개인 맞춤형으로 건강관리 루틴 형태로 제공해줘.
-        각 식사별 분석 및 추천 내용은 12줄 이내로 요약해서 답변해줘.
-        아침,점심,저녁에 대한 정보 줄 때 엔터 쳐줘 그리고 *은 무조건 빼 줘.
+        너는 영양,식품 그리고 헬스/운동쪽에서 전문가이자 조교 역할이야.
+        내가 준 영양정보를 기반으로 각 식사별로 건강관리하기 위해 부족한 영양분이 있다면,
+        그 다음 날 해당 식사는 어떻게 먹어야 하는지, 더 채워야하는 영양분으로 구성된 새로운 음식으로 구체적으로 조언해줘.
+        이때 음식을 몇g 먹어야하는지 구체적으로 안 작성해도 돼.
+        그리고 추천 운동을 개인 맞춤형으로 건강관리를 루틴 형태로 구체적으로 운동소요시간과 운동이름과 함께 제공해줘.
+        운동 효과 또한 사용자가 운동을 할만하게 효과를 구체적으로 작성해줘.
+        그리고 *은 무조건 무조건 다 필터하고 출력해.
+        해당 요청 정보에 대한 답만 하고 그외 다른 추가적인 정보는 요청하지 마.
+        대답내용은 일관성이 있게 가장 최적의 베스트 정보로만 뽑아서 보여줘.
+        해당 내용 분석시 핵심 내용으로만 4줄에서 6줄 정도는 채워줘.
+        주어진 정보를 보고 똑같이 어떤것을 몇g 섭취했다고 따라하지 않아도 돼.
         """;
 
     public NutritionSolutionResponse getAdvice(NutritionRequestDto request) throws Exception {
@@ -74,4 +88,68 @@ public class SolutionService {
 
         return NutritionSolutionResponse.builder().solutionInfo(content).build();
     }
+
+    // RAG 버전 메서드
+    public NutritionSolutionResponse getAdviceWithRag(NutritionRequestDto request) throws Exception {
+
+        var messages = List.of(
+                Map.of("role", "system", "content", SYSTEM_MESSAGE),
+                Map.of("role", "user", "content", request.getNutritionInfo())
+        );
+
+        // API 키 방식으로 인증
+        Map<String, Object> auth = Map.of(
+                "type", "api_key",
+                "key",  searchKey
+        );
+
+
+        Map<String, Object> searchParams = Map.of(
+                "endpoint",   searchEndpoint,
+                "index_name", searchIndex,
+                "authentication", auth
+        );
+
+        Map<String, Object> dataSource = Map.of(
+                "type", "azure_search",
+                "parameters", searchParams
+        );
+
+        // 최종 요청 바디
+        Map<String, Object> body = Map.of(
+                "messages", messages,
+                "temperature", 0.6,
+                "top_p", 1,
+                "max_tokens", 1200,
+                "data_sources", List.of(dataSource)
+        );
+
+        String path = String.format(
+                "/openai/deployments/%s/chat/completions?api-version=%s",
+                deployment, apiVersion
+        );
+
+        String responseStr = azureOpenAiWebClient.post()
+                .uri(path)
+                .header("api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(responseStr);
+
+        String content = root.path("choices")
+                .get(0)
+                .path("message")
+                .path("content")
+                .asText();
+
+        return NutritionSolutionResponse.builder()
+                .solutionInfo(content)
+                .build();
+    }
+
 }
