@@ -41,9 +41,7 @@ public class CustomVisionService {
 
         // Body = byte[]으로, 이미지 자체를 받는거이기에
         HttpEntity<byte[]> entity = new HttpEntity<>(imageBytes, headers);
-
         RestTemplate restTemplate = new RestTemplate();
-
         ResponseEntity<String> response = restTemplate.exchange(
                 url, HttpMethod.POST, entity, String.class
         );

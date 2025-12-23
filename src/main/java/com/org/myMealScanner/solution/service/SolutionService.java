@@ -2,6 +2,8 @@ package com.org.myMealScanner.solution.service;
 
 import com.org.myMealScanner.solution.dto.NutritionRequestDto;
 import com.org.myMealScanner.solution.dto.NutritionSolutionResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,12 +11,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SolutionService {
     private final WebClient azureOpenAiWebClient;
 
@@ -44,11 +53,12 @@ public class SolutionService {
         이때 음식을 몇g 먹어야하는지 구체적으로 안 작성해도 돼.
         그리고 추천 운동을 개인 맞춤형으로 건강관리를 루틴 형태로 구체적으로 운동소요시간과 운동이름과 함께 제공해줘.
         운동 효과 또한 사용자가 운동을 할만하게 효과를 구체적으로 작성해줘.
-        그리고 *은 무조건 무조건 다 필터하고 출력해.
         해당 요청 정보에 대한 답만 하고 그외 다른 추가적인 정보는 요청하지 마.
         대답내용은 일관성이 있게 가장 최적의 베스트 정보로만 뽑아서 보여줘.
         해당 내용 분석시 핵심 내용으로만 4줄에서 6줄 정도는 채워줘.
         주어진 정보를 보고 똑같이 어떤것을 몇g 섭취했다고 따라하지 않아도 돼.
+        한 문장이 끝날때마다 줄바꿈 또한 추가해줘. 그리고 다음 식사 권장해줄떄 등장하는 아침, 점심, 저녁이라는 단어가 나올때 가독성이 좋게
+        무조건 한줄바꿔서 꼭 문장 생성해줘. 마지막으로 멘트를 검증할때 *와 같은거는 무조건 다 필터하고 출력해.
         """;
 
     public NutritionSolutionResponse getAdvice(NutritionRequestDto request) throws Exception {
@@ -92,64 +102,75 @@ public class SolutionService {
     // RAG 버전 메서드
     public NutritionSolutionResponse getAdviceWithRag(NutritionRequestDto request) throws Exception {
 
-        var messages = List.of(
-                Map.of("role", "system", "content", SYSTEM_MESSAGE),
-                Map.of("role", "user", "content", request.getNutritionInfo())
-        );
+        try {
+            var messages = List.of(
+                    Map.of("role", "system", "content", SYSTEM_MESSAGE),
+                    Map.of("role", "user", "content", request.getNutritionInfo())
+            );
 
-        // API 키 방식으로 인증
-        Map<String, Object> auth = Map.of(
-                "type", "api_key",
-                "key",  searchKey
-        );
+            // API 키 방식으로 인증
+            Map<String, Object> auth = Map.of(
+                    "type", "api_key",
+                    "key", searchKey
+            );
 
 
-        Map<String, Object> searchParams = Map.of(
-                "endpoint",   searchEndpoint,
-                "index_name", searchIndex,
-                "authentication", auth
-        );
+            Map<String, Object> searchParams = Map.of(
+                    "endpoint", searchEndpoint,
+                    "index_name", searchIndex,
+                    "authentication", auth
+            );
 
-        Map<String, Object> dataSource = Map.of(
-                "type", "azure_search",
-                "parameters", searchParams
-        );
+            Map<String, Object> dataSource = Map.of(
+                    "type", "azure_search",
+                    "parameters", searchParams
+            );
 
-        // 최종 요청 바디
-        Map<String, Object> body = Map.of(
-                "messages", messages,
-                "temperature", 0.6,
-                "top_p", 1,
-                "max_tokens", 1200,
-                "data_sources", List.of(dataSource)
-        );
+            // 최종 요청 바디
+            Map<String, Object> body = Map.of(
+                    "messages", messages,
+                    "temperature", 0.6,
+                    "top_p", 1,
+                    "max_tokens", 1500,
+                    "data_sources", List.of(dataSource)
+            );
 
-        String path = String.format(
-                "/openai/deployments/%s/chat/completions?api-version=%s",
-                deployment, apiVersion
-        );
+            String path = String.format(
+                     "/openai/deployments/%s/chat/completions?api-version=%s",
+                    deployment, apiVersion
+            );
 
-        String responseStr = azureOpenAiWebClient.post()
-                .uri(path)
-                .header("api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+            String responseStr = azureOpenAiWebClient.post()
+                    .uri(path)
+                    .header("api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .retryWhen(
+                            Retry.backoff(3, Duration.ofMillis(500))     // 최대 3번 재시도, 0.5s, 1s, 2s
+                                    .filter(ex -> ex instanceof IOException
+                                            || ex instanceof WebClientRequestException)
+                    )
+                    .block();
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(responseStr);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(responseStr);
 
-        String content = root.path("choices")
-                .get(0)
-                .path("message")
-                .path("content")
-                .asText();
+            String content = root.path("choices")
+                    .get(0)
+                    .path("message")
+                    .path("content")
+                    .asText();
 
-        return NutritionSolutionResponse.builder()
-                .solutionInfo(content)
-                .build();
+            return NutritionSolutionResponse.builder()
+                    .solutionInfo(content)
+                    .build();
+        } catch (WebClientResponseException e) {
+            log.info("Azure OpenAI error status: {}", e.getStatusCode());
+            log.info("Azure OpenAI error body: {}", e.getResponseBodyAsString());
+            throw e;
+        }
     }
 
 }
